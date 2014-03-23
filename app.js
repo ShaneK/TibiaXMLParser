@@ -10,7 +10,7 @@ String.prototype.getProperty = function(prop){
 	var regex = new RegExp(prop+'="([^"]*)"');
 	var data = this.valueOf().match(regex);
 	if(!data) return null;
-	return data[1] || null;
+	return data[1];
 };
 
 var character = function(){
@@ -72,6 +72,19 @@ var murdererObject = function(line){
 	};
 };
 
+var Achievement = Waterline.Collection.extend({
+    identity: 'achievement',
+    connection: 'mySqlAdapter',
+    tableName: 'achievements',
+    attributes: {
+		name: "string",
+		grade: "string",
+		secret: "boolean",
+		player: "string",
+		id: {type: 'integer', autoIncrement: true, unique: true, primaryKey: true}
+    }
+});
+
 var Murderer = Waterline.Collection.extend({
     identity: 'murderer',
     connection: 'mySqlAdapter',
@@ -122,6 +135,7 @@ var Player = Waterline.Collection.extend({
     }
 });
 
+orm.loadCollection(Achievement);
 orm.loadCollection(Player);
 orm.loadCollection(Death);
 orm.loadCollection(Murderer);
@@ -162,6 +176,9 @@ var insertDeathValues = [];
 var insertMurdererSql = [];
 var insertMurdererValues = [];
 
+var insertAchievementSql = [];
+var insertAchievementValues = [];
+
 var charactersDone = 0;
 var done = false;
 
@@ -175,6 +192,29 @@ orm.initialize(config, function (err, models) {
 
     runProgram();
 });
+
+var createAchievements = function(currentPlayer){ 
+	for(var i = 0, k = currentPlayer.achievements.length; i < k; i++){
+		var achievement = currentPlayer.achievements[i];
+		achievement.player = currentPlayer.name;
+		var insertString = "";
+		if(insertAchievementSql.length === 0){
+			insertString = "INSERT INTO `tibiaapi`.`achievements` (`name`, `grade`, `secret`, `player`, `id`, `createdAt`, `updatedAt`) VALUES (?, ?, ?, ?, NULL, NOW(), NOW())";
+		}else{
+			insertString = ", (?, ?, ?, ?, NULL, NOW(), NOW())";
+		}
+		insertAchievementSql.push(insertString);
+		insertAchievementValues.push(achievement.name);
+		insertAchievementValues.push(achievement.grade);
+		insertAchievementValues.push(achievement.secret);
+		insertAchievementValues.push(achievement.player);
+		if(insertAchievementSql.length >= 1000){
+			executeQuery(insertAchievementSql.slice(0), insertAchievementValues.slice(0), false);
+			insertAchievementSql = [];
+			insertAchievementValues = [];
+		};
+	}
+};
 
 var createMurderers = function(currentDeath){ 
 	for(var i = 0, k = currentDeath.murderers.length; i < k; i++){
@@ -248,6 +288,7 @@ var createPlayer = function(currentCharacter){
 	insertCharacterValues.push(currentCharacter.signature);
 	insertCharacterValues.push(currentCharacter.creationDate);
 	createDeaths(currentCharacter);
+	createAchievements(currentCharacter);
 	if(insertCharacterSql.length >= 1000){
 		executeQuery(insertCharacterSql.slice(0), insertCharacterValues.slice(0), false, true);
 		insertCharacterSql = [];
@@ -391,6 +432,9 @@ function runProgram(){
 			executeQuery(insertDeathSql.slice(0), insertDeathValues.slice(0));
 			insertDeathSql = [];
 			insertDeathValues = [];
+			executeQuery(insertAchievementSql.slice(0), insertAchievementValues.slice(0), false);
+			insertAchievementSql = [];
+			insertAchievementValues = [];
 			executeQuery(insertMurdererSql.slice(0), insertMurdererValues.slice(0), true);
 			insertMurdererSql = [];
 			insertMurdererValues = [];
