@@ -4,7 +4,7 @@
 //   This example uses mysql, but you can use any waterline adapter and it should work fine    //
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
-var	mysql = require('sails-mysql');
+var mysql = require('sails-mysql');
 
 var config = {
     adapters: {
