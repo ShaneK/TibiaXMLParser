@@ -4,7 +4,23 @@ var linereader = require('line-reader'),
 	config = require('./config.js').config,
 	orm = new Waterline();
 
-
+var silent = false;
+if(process.argv.length > 2){ //First two arguments will ALWAYS be node and app
+	for(var i = 2, ii = process.argv.length; i < ii; i++){
+		var argument = process.argv[i];
+		if(argument === "-s" || argument === "--silent"){
+			silent = true;
+		}else if(argument === "-?" || argument === "--help"){
+			console.log("The following are valid command line arguments:");
+			console.log("  -s or --silent\t- Turns on silent mode, no console logs will occur.");
+			console.log("  -? or --help\t- Displays this message");
+			process.exit(0);
+		}else{
+			console.log("Unknown argument " + argument + ", use -? or --help to see a list of valid arguments.");
+			process.exit(0);
+		}
+	}
+}
 
 String.prototype.getProperty = function(prop){
 	var regex = new RegExp(prop+'="([^"]*)"');
@@ -72,6 +88,24 @@ var murdererObject = function(line){
 	};
 };
 
+var formerNameObject = function(line){
+	var name = line.getProperty("name");
+	return {
+		name: name
+	};
+}
+
+var FormerName = Waterline.Collection.extend({
+    identity: 'formername',
+    connection: 'mySqlAdapter',
+    tableName: 'formernames',
+    attributes: {
+		name: "string",
+		player: "string",
+		id: {type: 'integer', autoIncrement: true, unique: true, primaryKey: true}
+    }
+});
+
 var Achievement = Waterline.Collection.extend({
     identity: 'achievement',
     connection: 'mySqlAdapter',
@@ -135,6 +169,7 @@ var Player = Waterline.Collection.extend({
     }
 });
 
+orm.loadCollection(FormerName);
 orm.loadCollection(Achievement);
 orm.loadCollection(Player);
 orm.loadCollection(Death);
@@ -179,6 +214,9 @@ var insertMurdererValues = [];
 var insertAchievementSql = [];
 var insertAchievementValues = [];
 
+var insertFormerNameSql = [];
+var insertFormerNameValues = [];
+
 var charactersDone = 0;
 var done = false;
 
@@ -193,7 +231,28 @@ orm.initialize(config, function (err, models) {
     runProgram();
 });
 
-var createAchievements = function(currentPlayer){ 
+var createFormerNames = function(currentPlayer){
+	for(var i = 0, k = currentPlayer.formerNames.length; i < k; i++){
+		var previousName = currentPlayer.formerNames[i];
+		previousName.player = currentPlayer.name;
+		var insertString = "";
+		if(insertFormerNameSql.length === 0){
+			insertString = "INSERT INTO `tibiaapi`.`formernames` (`name`, `player`, `id`, `createdAt`, `updatedAt`) VALUES (?, ?, NULL, NOW(), NOW())";
+		}else{
+			insertString = ",  (?, ?, NULL, NOW(), NOW())";
+		}
+		insertFormerNameSql.push(insertString);
+		insertFormerNameValues.push(previousName.name);
+		insertFormerNameValues.push(previousName.player);
+		if(insertFormerNameSql.length >= 1000){
+			executeQuery(insertFormerNameSql.slice(0), insertFormerNameValues.slice(0));
+			insertFormerNameSql = [];
+			insertFormerNameValues = [];
+		};
+	}
+};
+
+var createAchievements = function(currentPlayer){
 	for(var i = 0, k = currentPlayer.achievements.length; i < k; i++){
 		var achievement = currentPlayer.achievements[i];
 		achievement.player = currentPlayer.name;
@@ -209,7 +268,7 @@ var createAchievements = function(currentPlayer){
 		insertAchievementValues.push(achievement.secret);
 		insertAchievementValues.push(achievement.player);
 		if(insertAchievementSql.length >= 1000){
-			executeQuery(insertAchievementSql.slice(0), insertAchievementValues.slice(0), false);
+			executeQuery(insertAchievementSql.slice(0), insertAchievementValues.slice(0));
 			insertAchievementSql = [];
 			insertAchievementValues = [];
 		};
@@ -234,7 +293,7 @@ var createMurderers = function(currentDeath){
 		insertMurdererValues.push(murderer.unknown);
 		insertMurdererValues.push(murderer.murderId);
 		if(insertMurdererSql.length >= 1000){
-			executeQuery(insertMurdererSql.slice(0), insertMurdererValues.slice(0), false);
+			executeQuery(insertMurdererSql.slice(0), insertMurdererValues.slice(0));
 			insertMurdererSql = [];
 			insertMurdererValues = [];
 		};
@@ -259,7 +318,7 @@ var createDeaths = function(currentCharacter){
 		insertDeathValues.push(death.player);
 		createMurderers(death);
 		if(insertDeathSql.length >= 1000){
-			executeQuery(insertDeathSql.slice(0), insertDeathValues.slice(0), false);
+			executeQuery(insertDeathSql.slice(0), insertDeathValues.slice(0));
 			insertDeathSql = [];
 			insertDeathValues = [];
 		};
@@ -288,6 +347,7 @@ var createPlayer = function(currentCharacter){
 	insertCharacterValues.push(currentCharacter.signature);
 	insertCharacterValues.push(currentCharacter.creationDate);
 	createDeaths(currentCharacter);
+	createFormerNames(currentCharacter);
 	createAchievements(currentCharacter);
 	if(insertCharacterSql.length >= 1000){
 		executeQuery(insertCharacterSql.slice(0), insertCharacterValues.slice(0), false, true);
@@ -300,16 +360,19 @@ var createPlayer = function(currentCharacter){
 var start = process.hrtime();
 
 var elapsed_time = function(note){
+	if(silent) return;
 	var precision = 3; // 3 decimal places
 	var elapsed = process.hrtime(start)[1] / 1000000; // divide by a million to get nano to milli
 	console.log(process.hrtime(start)[0] + " s, " + elapsed.toFixed(precision) + " ms - " + note); // print message + time
 };
 
-var executeQuery = function(currentinsertCharacterSql, currentInsertValues, last, isCharacter){
+var executeQuery = function(currentinsertCharacterSql, currentInsertValues, last, isCharacter, loudly){
 	app.models.player.query(currentinsertCharacterSql.join(""), currentInsertValues, function(err, result){
 		if(err) console.log("Error occured:", err);
-		// elapsed_time("Built and executed query - " + currentinsertCharacterSql.length + " rows");
-		if(isCharacter){
+		if(loudly){
+			elapsed_time("Built and executed query - " + currentinsertCharacterSql.length + " rows");
+		}
+		if(isCharacter && !silent){
 			charactersDone += currentinsertCharacterSql.length;
 			var percentDone = Math.floor((charactersDone/characters)*10000)/100;
 			var numGreen = Math.floor(percentDone/2);
@@ -338,8 +401,9 @@ var executeQuery = function(currentinsertCharacterSql, currentInsertValues, last
 };
 
 function runProgram(){
-	
-	console.log("Reading file.");
+	if(!silent){
+		console.log("Reading file.");
+	}
 	
 	linereader.eachLine('characters.xml', function(line, last){
 		if(!inCharacter){
@@ -413,6 +477,11 @@ function runProgram(){
 			if(line.indexOf("<account ") !== -1){
 				currentCharacter.creationDate = line.getProperty("creationdate");
 			}
+
+			if(line.indexOf("<formername ") !== -1){
+				var newFormerName = new formerNameObject(line);
+				currentCharacter.formerNames.push(newFormerName);
+			}
 		
 			if(line.indexOf("</character>") !== -1){
 				inCharacter = false;
@@ -424,7 +493,6 @@ function runProgram(){
 		
 		lines++;
 		if(last){
-			console.log("That's it.");
 			elapsed_time("Read " + lines + " lines, parsed " + characters + " characters");
 			executeQuery(insertCharacterSql.slice(0), insertCharacterValues.slice(0));
 			insertCharacterSql = [];
@@ -435,6 +503,9 @@ function runProgram(){
 			executeQuery(insertAchievementSql.slice(0), insertAchievementValues.slice(0), false);
 			insertAchievementSql = [];
 			insertAchievementValues = [];
+			executeQuery(insertFormerNameSql.slice(0), insertFormerNameValues.slice(0), false);
+			insertFormerNameSql = [];
+			insertFormerNameValues = [];
 			executeQuery(insertMurdererSql.slice(0), insertMurdererValues.slice(0), true);
 			insertMurdererSql = [];
 			insertMurdererValues = [];
