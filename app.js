@@ -156,7 +156,7 @@ var Player = Waterline.Collection.extend({
         name: "string",
 		sex: "string",
 		vocation: "string",
-		level: "string",
+		level: "integer",
 		world: "string",
 		residence: "string",
 		lastlogin: "date",

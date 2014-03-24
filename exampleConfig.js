@@ -2,6 +2,8 @@
 //   This is an example config file                                                            //
 //   To use this file, change the database connection settings and rename it to config.js      //
 //   This example uses mysql, but you can use any waterline adapter and it should work fine    //
+//   Note: If you do change the database type, you'll have to change the manual queries in     //
+//   the create functions to match the syntax of the new database                              //
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
 var mysql = require('sails-mysql');
