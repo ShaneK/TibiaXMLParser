@@ -144,7 +144,7 @@ var Death = Waterline.Collection.extend({
 		murderercount: "integer",
 		id: {type: 'integer', autoIncrement: true, primaryKey: true},
 		player: "string",
-		murderId: {type: "string", unique: true}
+		murderId: {type: "string"}
     }
 });
 
