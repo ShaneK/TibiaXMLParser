@@ -13,7 +13,7 @@ if(process.argv.length > 2){ //First two arguments will ALWAYS be node and app
 		}else if(argument === "-?" || argument === "--help"){
 			console.log("The following are valid command line arguments:");
 			console.log("  -s or --silent\t- Turns on silent mode, no console logs will occur.");
-			console.log("  -? or --help\t- Displays this message");
+			console.log("  -? or --help\t\t- Displays this message");
 			process.exit(0);
 		}else{
 			console.log("Unknown argument " + argument + ", use -? or --help to see a list of valid arguments.");
@@ -415,7 +415,7 @@ function runProgram(){
 				}
 			}
 		}else if(inComment){
-			commentArray.push(line+"\n");
+			commentArray.push("\n" + line);
 			if(line.indexOf("</comment>") !== -1){
 				inComment = false;
 				currentCharacter.comment = commentArray.join("").replace("</comment>", "").trim();
