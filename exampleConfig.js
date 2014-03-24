@@ -24,7 +24,8 @@ var config = {
     },
     defaults: {
         migrate: 'alter'
-    }
+    },
+    recordsAtATime: 1000 //Not used in the actual waterline config object, but used in app.js to determine how many rows it should insert in one query.
 };
 
 exports.config = config;

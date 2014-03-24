@@ -102,7 +102,7 @@ var FormerName = Waterline.Collection.extend({
     attributes: {
 		name: "string",
 		player: "string",
-		id: {type: 'integer', autoIncrement: true, unique: true, primaryKey: true}
+		id: {type: 'integer', autoIncrement: true, primaryKey: true}
     }
 });
 
@@ -115,7 +115,7 @@ var Achievement = Waterline.Collection.extend({
 		grade: "string",
 		secret: "boolean",
 		player: "string",
-		id: {type: 'integer', autoIncrement: true, unique: true, primaryKey: true}
+		id: {type: 'integer', autoIncrement: true, primaryKey: true}
     }
 });
 
@@ -129,7 +129,7 @@ var Murderer = Waterline.Collection.extend({
 		participation: "string",
 		pvp: "boolean",
 		unknown: "boolean",
-		id: {type: 'integer', autoIncrement: true, unique: true, primaryKey: true},
+		id: {type: 'integer', autoIncrement: true, primaryKey: true},
 		murderId: {type: "string"}
     }
 });
@@ -142,7 +142,7 @@ var Death = Waterline.Collection.extend({
 		date: "date",
 		level: "integer",
 		murderercount: "integer",
-		id: {type: 'integer', autoIncrement: true, unique: true, primaryKey: true},
+		id: {type: 'integer', autoIncrement: true, primaryKey: true},
 		player: "string",
 		murderId: {type: "string", unique: true}
     }
@@ -165,7 +165,7 @@ var Player = Waterline.Collection.extend({
 		comment: "string",
 		signature: "string",
 		creationDate: "date",
-		id: {type: 'integer', autoIncrement: true, unique: true, primaryKey: true}
+		id: {type: 'integer', autoIncrement: true, primaryKey: true}
     }
 });
 
@@ -244,7 +244,7 @@ var createFormerNames = function(currentPlayer){
 		insertFormerNameSql.push(insertString);
 		insertFormerNameValues.push(previousName.name);
 		insertFormerNameValues.push(previousName.player);
-		if(insertFormerNameSql.length >= 1000){
+		if(insertFormerNameSql.length >= config.recordsAtATime){
 			executeQuery(insertFormerNameSql.slice(0), insertFormerNameValues.slice(0));
 			insertFormerNameSql = [];
 			insertFormerNameValues = [];
@@ -267,7 +267,7 @@ var createAchievements = function(currentPlayer){
 		insertAchievementValues.push(achievement.grade);
 		insertAchievementValues.push(achievement.secret);
 		insertAchievementValues.push(achievement.player);
-		if(insertAchievementSql.length >= 1000){
+		if(insertAchievementSql.length >= config.recordsAtATime){
 			executeQuery(insertAchievementSql.slice(0), insertAchievementValues.slice(0));
 			insertAchievementSql = [];
 			insertAchievementValues = [];
@@ -292,7 +292,7 @@ var createMurderers = function(currentDeath){
 		insertMurdererValues.push(murderer.pvp);
 		insertMurdererValues.push(murderer.unknown);
 		insertMurdererValues.push(murderer.murderId);
-		if(insertMurdererSql.length >= 1000){
+		if(insertMurdererSql.length >= config.recordsAtATime){
 			executeQuery(insertMurdererSql.slice(0), insertMurdererValues.slice(0));
 			insertMurdererSql = [];
 			insertMurdererValues = [];
@@ -317,7 +317,7 @@ var createDeaths = function(currentCharacter){
 		insertDeathValues.push(death.murderercount);
 		insertDeathValues.push(death.player);
 		createMurderers(death);
-		if(insertDeathSql.length >= 1000){
+		if(insertDeathSql.length >= config.recordsAtATime){
 			executeQuery(insertDeathSql.slice(0), insertDeathValues.slice(0));
 			insertDeathSql = [];
 			insertDeathValues = [];
@@ -349,7 +349,7 @@ var createPlayer = function(currentCharacter){
 	createDeaths(currentCharacter);
 	createFormerNames(currentCharacter);
 	createAchievements(currentCharacter);
-	if(insertCharacterSql.length >= 1000){
+	if(insertCharacterSql.length >= config.recordsAtATime){
 		executeQuery(insertCharacterSql.slice(0), insertCharacterValues.slice(0), false, true);
 		insertCharacterSql = [];
 		insertCharacterValues = [];
@@ -385,12 +385,9 @@ var executeQuery = function(currentinsertCharacterSql, currentInsertValues, last
 			for(var i = 0, ii = 50-numGreen; i < ii; i++){
 				black += "=";
 			}
-			if(done){
-				console.log("Percentage of characters done (out of total): " + percentDone.toFixed(2) + "%");
-			}else{
-				console.log("Percentage of characters done (out of processed): " + percentDone.toFixed(2) + "%");
-			}
-			console.log("["+clc.green(green)+clc.black(black)+"]");
+
+			var processedString = "["+clc.green(green)+clc.black(black)+"] " + percentDone.toFixed(2) + "%" + (done ? " (done processing)" : " (processing)"); 
+			process.stdout.write(processedString + "\033[0G");
 		}
 
 		if(last){
