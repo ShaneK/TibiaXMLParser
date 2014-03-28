@@ -162,8 +162,8 @@ var Player = Waterline.Collection.extend({
 		lastlogin: "date",
 		accountstate: "string",
 		charcreated: "date",
-		comment: "string",
-		signature: "string",
+		comment: {type: "string", size: 9999},
+		signature: {type: "string", size: 9999},
 		creationDate: "date",
 		id: {type: 'integer', autoIncrement: true, primaryKey: true}
     }
