@@ -130,7 +130,7 @@ var Murderer = Waterline.Collection.extend({
 		pvp: "boolean",
 		unknown: "boolean",
 		id: {type: 'integer', autoIncrement: true, primaryKey: true},
-		murderId: {type: "string"}
+		murderId: {type: "string", index: true}
     }
 });
 
@@ -143,8 +143,8 @@ var Death = Waterline.Collection.extend({
 		level: "integer",
 		murderercount: "integer",
 		id: {type: 'integer', autoIncrement: true, primaryKey: true},
-		player: "string",
-		murderId: {type: "string"}
+		player: {type: "string", index: true},
+		murderId: {type: "string", index: true}
     }
 });
 
@@ -230,6 +230,24 @@ orm.initialize(config, function (err, models) {
 
     runProgram();
 });
+
+var addIndexes = function(){
+    console.log("Adding indexes");
+    app.models.player.query("ALTER TABLE deaths ADD INDEX (murderId)", function(err){
+        if(err){
+            console.log(err);
+            process.exit(1);
+        }
+        app.models.player.query("ALTER TABLE murderers ADD INDEX (murderId)", function(err){
+            if(err){
+                console.log(err);
+                process.exit(1);
+            }
+            console.log("Added indexes");
+            orm.teardown();
+        });
+    });
+};
 
 var createFormerNames = function(currentPlayer){
 	for(var i = 0, k = currentPlayer.formerNames.length; i < k; i++){
@@ -391,8 +409,8 @@ var executeQuery = function(currentinsertCharacterSql, currentInsertValues, last
 		}
 
 		if(last){
-			orm.teardown();
-			elapsed_time("Whole file read and processed into database.");
+            elapsed_time("Whole file read and processed into database.");
+            addIndexes();
 		}
 	});
 };
