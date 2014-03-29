@@ -130,7 +130,7 @@ var Murderer = Waterline.Collection.extend({
 		pvp: "boolean",
 		unknown: "boolean",
 		id: {type: 'integer', autoIncrement: true, primaryKey: true},
-		murderId: {type: "string", index: true}
+		murderId: {type: "string"}
     }
 });
 
@@ -143,8 +143,8 @@ var Death = Waterline.Collection.extend({
 		level: "integer",
 		murderercount: "integer",
 		id: {type: 'integer', autoIncrement: true, primaryKey: true},
-		player: {type: "string", index: true},
-		murderId: {type: "string", index: true}
+		player: {type: "string"},
+		murderId: {type: "string"}
     }
 });
 
@@ -243,8 +243,20 @@ var addIndexes = function(){
                 console.log(err);
                 process.exit(1);
             }
-            console.log("Added indexes");
-            orm.teardown();
+            app.models.player.query("ALTER TABLE formernames ADD INDEX (player)", function(err){
+                if(err){
+                    console.log(err);
+                    process.exit(1);
+                }
+                app.models.player.query("ALTER TABLE achievements ADD INDEX (player)", function(err){
+                    if(err){
+                        console.log(err);
+                        process.exit(1);
+                    }
+                    console.log("Added indexes");
+                    orm.teardown();
+                });
+            });
         });
     });
 };
